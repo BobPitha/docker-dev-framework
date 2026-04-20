@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
+
+if [ -f "${PROJECT_ENV}" ]; then
+    source "${PROJECT_ENV}"
+else
+    printf '%s\n' "No workspace-config/project.env found; exiting" >&2
+    exit 1
+fi
+
+readonly CONTAINER_NAME="${PROJECT}"
+
+"${SCRIPT_DIR}/dev-start"
+
+attempts=0
+max_attempts=24
+
+while [[ "$(docker exec "${CONTAINER_NAME}" bash -c '[[ -f /.docker-setup-user-complete ]] && echo true' 2>/dev/null || true)" != "true" ]]; do
+    attempts=$((attempts + 1))
+    if (( attempts >= max_attempts )); then
+        printf '%s\n' "Timed out waiting for ${CONTAINER_NAME} docker container setup to complete" >&2
+        exit 1
+    fi
+    printf '%s\n' "Waiting for ${CONTAINER_NAME} docker container setup to be complete"
+    sleep 5
+done
+
+printf '%s\n' "Connecting to ${CONTAINER_NAME} docker container"
+docker exec -it \
+    -e "TERM=xterm-256color" \
+    --user="${SERVER_USER}" \
+    -w "/home/${SERVER_USER}" \
+    "${CONTAINER_NAME}" \
+    bash
+
+exit 0

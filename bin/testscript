@@ -1,0 +1,2 @@
+#!/bin/bash
+source workspace-config/project.env

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -e
+
+if repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+    if [ -f "${repo_root}/workspace-config/project.env" ]; then
+        printf '%s\n' "$repo_root"
+        exit 0
+    fi
+fi
+
+dir="${PWD}"
+while [[ "${dir}" != "/" ]]; do
+    if [[ -f "${dir}/workspace-config/project.env" ]]; then
+        printf '%s\n' "${dir}"
+        exit 0
+    fi
+    dir=$(dirname "$dir")
+done
+
+exit 1

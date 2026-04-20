@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+find_workspace_root() {
+    local dir repo_root
+
+    if repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+        if [ -f "$repo_root/workspace-config/project.env" ]; then
+            printf '%s\n' "$repo_root"
+            return 0
+        fi
+    fi
+
+    dir="$PWD"
+    while [ "$dir" != "/" ]; do
+        if [ -f "$dir/workspace-config/project.env" ]; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        dir=$(dirname "$dir")
+    done
+
+    return 1
+}
+
+workspace_root="$(find_workspace_root)" || {
+    printf '%s\n' "No workspace-config found; exiting."
+    exit 1
+}
+
+echo "Workspace root: ${workspace_root}"
+
+# Validate framework presence
+if [ ! -d "${workspace_root}/bin" ]; then
+    echo "No framework scripts found in repo root" >&2
+    exit 1
+fi
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+    start) "${workspace_root}/bin/dev-start" "$@" ;;
+    shell) "${workspace_root}/bin/dev-shell" "$@" ;;
+    stop)  "${workspace_root}/bin/dev-stop"  "$@" ;;
+    *)
+        echo "Usage: ddf {start|shell|stop}" >&2
+        exit 1
+        ;;
+esac

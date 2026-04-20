@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
+
+[ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
+source "${PROJECT_ENV}"
+
+IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev"
+CONTAINER_NAME="${PROJECT}"
+WORKSPACE_PATH="${REPO_ROOT}/workspace"
+
+running_container_id="$(docker ps --format '{{.ID}}' --filter "name=^${CONTAINER_NAME}$")"
+
+if [ -n "${running_container_id}" ]; then
+    printf '%s\n' "Container ${CONTAINER_NAME} already running."
+    exit 0
+fi
+
+if [ -z "$(docker images -q "${IMAGE_NAME}")" ]; then
+    printf '%s\n' "Image ${IMAGE_NAME} does not exist locally." >&2
+    exit 1
+fi
+
+workspace_mounts=()
+if [ -d "${WORKSPACE_PATH}" ]; then
+    workspace_mounts+=( "--volume=${WORKSPACE_PATH}:/workspace" )
+    while IFS= read -r -d '' symbolic_link; do
+        abs="$(realpath "${symbolic_link}")"
+        workspace_mounts+=( "--volume=${abs}:/workspace/$(basename "${symbolic_link}")" )
+    done < <(find "${WORKSPACE_PATH}" -maxdepth 1 -type l -print0)
+fi
+
+: "${DISPLAY:?DISPLAY is not set}"
+command -v xauth >/dev/null 2>&1 || { printf '%s\n' "xauth not found" >&2; exit 1; }
+
+XSOCK=/tmp/.X11-unix
+XAUTH="$(mktemp /tmp/.docker.xauth.XXXXX)"
+touch "${XAUTH}"
+xauth nlist "${DISPLAY}" | sed -e 's/^..../ffff/' | xauth -f "${XAUTH}" nmerge -
+
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+
+docker run \
+    --rm \
+    --tty \
+    --detach \
+    --name "${CONTAINER_NAME}" \
+    --hostname "${CONTAINER_NAME}" \
+    --add-host "${CONTAINER_NAME}:127.0.0.1" \
+    --env "DISPLAY" \
+    --env "XAUTHORITY=${XAUTH}" \
+    --env "QT_X11_NO_MITSHM=1" \
+    --env "HOST_UID=${HOST_UID}" \
+    --env "HOST_GID=${HOST_GID}" \
+    --volume "${XSOCK}:${XSOCK}:rw" \
+    --volume "${XAUTH}:${XAUTH}:rw" \
+    "${workspace_mounts[@]}" \
+    "${IMAGE_NAME}"
