@@ -185,6 +185,14 @@ RUN if [ ! -f /home/${SERVER_USER}/.config/Code/User/settings.json ]; then \
       && echo '{\n    "workbench.colorTheme": "Abyss"\n}' > /home/${SERVER_USER}/.config/Code/User/settings.json; \
     fi
 
+# Wrap code to disable sandbox in containers
+RUN mv /usr/bin/code /usr/bin/code.real && \
+    printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec /usr/bin/code.real --no-sandbox "$@"' \
+    > /usr/bin/code && \
+    chmod +x /usr/bin/code
+
 # extra bashrc includes
 COPY bashrc_include* /home/${SERVER_USER}/
 RUN for incfile in /home/${SERVER_USER}/bashrc_include*; do \
