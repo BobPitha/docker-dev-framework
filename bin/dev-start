@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+expand_path() {
+  case "$1" in
+    "~") echo "$HOME" ;;
+    "~/"*) echo "$HOME/${1#~/}" ;;
+    "~"*)
+      user="${1#~}"
+      user="${user%%/*}"
+      rest="${1#~$user}"
+      home="$(getent passwd "$user" | cut -d: -f6)"
+      [[ -n "$home" ]] && echo "$home$rest" || return 1
+      ;;
+    *) echo "$1" ;;
+  esac
+}
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
@@ -12,8 +27,7 @@ IS_GIT_DIR=$(if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else 
 VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; else echo local ; fi)
 
 TARGET_IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev:v${VERSION}"
-CONTAINER_NAME="${PROJECT}"
-WORKSPACE_PATH="${REPO_ROOT}/workspace"
+CONTAINER_NAME="${PROJECT}-dev"
 
 RUNNING_CONTAINER_ID="$( docker ps --quiet --filter "name=^/${CONTAINER_NAME}$" )"
 if [[ -n "${RUNNING_CONTAINER_ID}" ]]; then
@@ -38,13 +52,20 @@ if [ -z "$(docker images -q "${TARGET_IMAGE_NAME}")" ]; then
     exit 1
 fi
 
-workspace_mounts=()
-if [ -d "${WORKSPACE_PATH}" ]; then
-    workspace_mounts+=( "--volume=${WORKSPACE_PATH}:/workspace" )
-    while IFS= read -r -d '' symbolic_link; do
-        abs="$(realpath "${symbolic_link}")"
-        workspace_mounts+=( "--volume=${abs}:/workspace/$(basename "${symbolic_link}")" )
-    done < <(find "${WORKSPACE_PATH}" -maxdepth 1 -type l -print0)
+WORKSPACE_MOUNTS=()
+if [[ -f "${REPO_ROOT}/workspace-config/workspace_dirs.bash" ]]; then
+    source "${REPO_ROOT}/workspace-config/workspace_dirs.bash"
+    if declare -p WORKSPACE_DIRS >/dev/null 2>&1; then
+        for dir in "${WORKSPACE_DIRS[@]}"; do
+        EXPANDED="$(expand_path "$dir")" || {
+            echo "Invalid path: $dir"
+            continue
+        }
+        ABS="$(realpath "${EXPANDED}")"
+        NAME="$(basename "${ABS}")"
+        WORKSPACE_MOUNTS+=(--mount type=bind,source="${ABS}",target="/workspace/${NAME}")
+        done
+    fi
 fi
 
 : "${DISPLAY:?DISPLAY is not set}"
@@ -75,5 +96,5 @@ docker run \
     --env "HOST_UID=${HOST_UID}" \
     --env "HOST_GID=${HOST_GID}" \
     --volume "${XSOCK}:${XSOCK}:rw" \
-    "${workspace_mounts[@]}" \
+    "${WORKSPACE_MOUNTS[@]}" \
     "${TARGET_IMAGE_NAME}"

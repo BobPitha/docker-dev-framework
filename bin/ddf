@@ -24,7 +24,7 @@ find_workspace_root() {
 }
 
 workspace_root="$(find_workspace_root)" || {
-    printf '%s\n' "No workspace-config found; exiting."
+    printf '%s\n' "No workspace-config/project.env found; this is not in a DDF subtree. Exiting."
     exit 1
 }
 

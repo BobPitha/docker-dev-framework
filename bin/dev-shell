@@ -12,7 +12,7 @@ else
     exit 1
 fi
 
-readonly CONTAINER_NAME="${PROJECT}"
+readonly CONTAINER_NAME="${PROJECT}-dev"
 
 "${SCRIPT_DIR}/dev-start"
 

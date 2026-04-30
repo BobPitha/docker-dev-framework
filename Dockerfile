@@ -23,10 +23,6 @@ RUN if [ "$FROM_IMAGE" = "ubuntu:0.1" ]; then \
 ENV TZ=America/New_York
 WORKDIR /opt
 
-# system scripts
-COPY ./docker/assets/dev/system/sbin/ /sbin
-RUN chmod 755 /sbin/docker-*
-
 # basic packages
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
@@ -56,11 +52,6 @@ RUN mkdir -p /opt \
     && useradd -m -G dialout,video,plugdev -p ${SERVER_USER} -s /bin/bash ${SERVER_USER} \
     && echo "${SERVER_USER}:${SERVER_USER}" | chpasswd
 
-# keyboard config
-COPY ./docker/assets/selections.conf /opt/selections.conf
-RUN debconf-set-selections < /opt/selections.conf \
-    && apt-get install -y --no-install-recommends keyboard-configuration
-
 # workspace
 RUN mkdir -p /workspace \
     && chown ${SERVER_USER}:${SERVER_USER} /workspace
@@ -82,6 +73,10 @@ ARG PP_DEV_USE_VIM
 WORKDIR /opt
 
 RUN yes | unminimize
+
+# system scripts
+COPY ./docker/assets/dev/system/sbin/ /sbin
+RUN chmod 755 /sbin/docker-*
 
 # dev/build packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -135,6 +130,11 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
 COPY ./docker/assets/dev/user /home/${SERVER_USER}
 RUN mkdir -p /home/${SERVER_USER}/bin \
     && echo "PATH=/home/${SERVER_USER}/bin:${PATH}" >> /home/${SERVER_USER}/.bashrc
+
+# keyboard config
+COPY ./docker/assets/selections.conf /opt/selections.conf
+RUN debconf-set-selections < /opt/selections.conf \
+    && apt-get install -y --no-install-recommends keyboard-configuration
 
 # sudo + shell setup
 RUN usermod -a -G sudo ${SERVER_USER} \
@@ -193,13 +193,13 @@ RUN mv /usr/bin/code /usr/bin/code.real && \
     > /usr/bin/code && \
     chmod +x /usr/bin/code
 
-# extra bashrc includes
-COPY bashrc_include* /home/${SERVER_USER}/
-RUN for incfile in /home/${SERVER_USER}/bashrc_include*; do \
-      if [ -f "${incfile}" ]; then \
-        cat "${incfile}" >> /home/${SERVER_USER}/.bashrc; \
-      fi; \
-    done
+# extra bashrc includes - uncomment if needed
+# COPY bashrc_include* /home/${SERVER_USER}/
+# RUN for incfile in /home/${SERVER_USER}/bashrc_include*; do \
+#       if [ -f "${incfile}" ]; then \
+#         cat "${incfile}" >> /home/${SERVER_USER}/.bashrc; \
+#       fi; \
+#     done
 
 RUN chown -R ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}
 

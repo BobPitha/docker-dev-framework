@@ -38,8 +38,6 @@ DOCKER_RUN_USER_ARGS := ${DOCKER_RUN_USER_ARGS} \
 			--volume=${REPOSITORY_ROOT}/shell_state/Code:/home/${SERVER_USER}/.config/Code \
 			--volume=${HOME}/.ssh:/home/${SERVER_USER}/.ssh
 
-WORKSPACE_PATH := ${REPOSITORY_ROOT}/workspace
-
 build: dev
 
 base:
