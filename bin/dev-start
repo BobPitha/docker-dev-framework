@@ -8,19 +8,33 @@ PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
 [ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
 source "${PROJECT_ENV}"
 
-IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev"
+IS_GIT_DIR=$(if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
+VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; else echo local ; fi)
+
+TARGET_IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev:v${VERSION}"
 CONTAINER_NAME="${PROJECT}"
 WORKSPACE_PATH="${REPO_ROOT}/workspace"
 
-running_container_id="$(docker ps --format '{{.ID}}' --filter "name=^${CONTAINER_NAME}$")"
+RUNNING_CONTAINER_ID="$( docker ps --quiet --filter "name=^/${CONTAINER_NAME}$" )"
+if [[ -n "${RUNNING_CONTAINER_ID}" ]]; then
+  RUNNING_IMAGE="$( docker inspect --format='{{.Config.Image}}' "${RUNNING_CONTAINER_ID}" )"
 
-if [ -n "${running_container_id}" ]; then
-    printf '%s\n' "Container ${CONTAINER_NAME} already running."
-    exit 0
+  if [[ "${RUNNING_IMAGE}" != "${TARGET_IMAGE_NAME}" ]]; then
+    echo "ERROR: container ${CONTAINER_NAME} is already running from:"
+    echo "  ${RUNNING_IMAGE}"
+    echo "Expected:"
+    echo "  ${TARGET_IMAGE_NAME}"
+    echo
+    echo "Stop the container and rebuild/start the current version."
+    exit 1
+  fi
+
+  echo "Container ${CONTAINER_NAME} is already running with expected image ${TARGET_IMAGE_NAME}"
+  exit 0
 fi
 
-if [ -z "$(docker images -q "${IMAGE_NAME}")" ]; then
-    printf '%s\n' "Image ${IMAGE_NAME} does not exist locally." >&2
+if [ -z "$(docker images -q "${TARGET_IMAGE_NAME}")" ]; then
+    printf '%s\n' "Image ${TARGET_IMAGE_NAME} does not exist locally." >&2
     exit 1
 fi
 
@@ -37,12 +51,15 @@ fi
 command -v xauth >/dev/null 2>&1 || { printf '%s\n' "xauth not found" >&2; exit 1; }
 
 XSOCK=/tmp/.X11-unix
-XAUTH="$(mktemp /tmp/.docker.xauth.XXXXX)"
-touch "${XAUTH}"
-xauth nlist "${DISPLAY}" | sed -e 's/^..../ffff/' | xauth -f "${XAUTH}" nmerge -
+XAUTH_HOST="$(mktemp /tmp/.docker.xauth.XXXXX)"
+XAUTH_CONTAINER="/tmp/.docker.xauth"
+touch "${XAUTH_HOST}"
+xauth nlist "${DISPLAY}" | sed -e 's/^..../ffff/' | xauth -f "${XAUTH_HOST}" nmerge -
 
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
+
+printf "%s\n" "Starting image ${TARGET_IMAGE_NAME} as ${CONTAINER_NAME}"
 
 docker run \
     --rm \
@@ -52,11 +69,11 @@ docker run \
     --hostname "${CONTAINER_NAME}" \
     --add-host "${CONTAINER_NAME}:127.0.0.1" \
     --env "DISPLAY" \
-    --env "XAUTHORITY=${XAUTH}" \
+    --volume "${XAUTH_HOST}:${XAUTH_CONTAINER}:ro" \
+    --env "XAUTHORITY=${XAUTH_CONTAINER}" \
     --env "QT_X11_NO_MITSHM=1" \
     --env "HOST_UID=${HOST_UID}" \
     --env "HOST_GID=${HOST_GID}" \
     --volume "${XSOCK}:${XSOCK}:rw" \
-    --volume "${XAUTH}:${XAUTH}:rw" \
     "${workspace_mounts[@]}" \
-    "${IMAGE_NAME}"
+    "${TARGET_IMAGE_NAME}"

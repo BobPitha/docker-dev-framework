@@ -74,15 +74,3 @@ prod:
 		--build-arg SERVER_USER=${SERVER_USER} \
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
-
-shell:
-	@${REPOSITORY_ROOT}/bin/docker-start.sh ${DOCKER_IMAGE_TAG_ROOT}-dev:v${VERSION} ${DOCKER_CONTAINER_NAME_ROOT} "${DOCKER_RUN_USER_ARGS}" "${WORKSPACE_PATH}"
-	@${REPOSITORY_ROOT}/bin/docker-shell.sh ${DOCKER_CONTAINER_NAME_ROOT} ${SERVER_USER} || true
-
-stop:
-	docker kill ${DOCKER_CONTAINER_NAME_ROOT}
-
-clean:
-	@echo "removing containers"
-	@echo $$(docker ps -aq --filter "name=^${DOCKER_CONTAINER_NAME_ROOT}$$")
-	@docker rm -f $$(docker ps -aq --filter "name=^${DOCKER_CONTAINER_NAME_ROOT}$$") >/dev/null 2>&1 || echo "   no containers to remove"
