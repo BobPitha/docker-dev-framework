@@ -13,7 +13,6 @@ ARG FROM_IMAGE
 ARG SERVER_USER
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources || true
 
 RUN if [ "$FROM_IMAGE" = "ubuntu:0.1" ]; then \
       echo "ERROR: FROM_IMAGE not set; pass --build-arg FROM_IMAGE=..."; \
@@ -28,51 +27,173 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        apt-utils \
-        apt \
         ca-certificates \
-        coinor-clp \
         curl \
-        dialog \
         gnupg \
         iproute2 \
-        libxkbcommon0 \
-        libgbm1 \
         make \
-        net-tools \
         perl \
-        software-properties-common \
-        ssh \
+        openssh-client \
         tzdata \
         wget \
-        debconf-utils
+    && rm -rf /var/lib/apt/lists/*
 
 # user setup
-RUN mkdir -p /opt \
-    && useradd -m -G dialout,video,plugdev -p ${SERVER_USER} -s /bin/bash ${SERVER_USER} \
-    && echo "${SERVER_USER}:${SERVER_USER}" | chpasswd
+RUN useradd -m -G dialout,video,plugdev -s /bin/bash ${SERVER_USER}
 
 # workspace
 RUN mkdir -p /workspace \
     && chown ${SERVER_USER}:${SERVER_USER} /workspace
 
-# clean
-RUN apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-
 # ============================================================
-# dev
+# dev-core
 # ============================================================
-FROM base AS dev
+FROM base AS dev-core
 
 ARG SERVER_USER
 ARG PP_DEV_USE_VIM
 
 WORKDIR /opt
 
-RUN yes | unminimize
+# dev-core packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        ccache \
+        cmake \
+        gdb \
+        git \
+        less \
+        libtool \
+        zlib1g-dev \
+        libbz2-dev \
+        libncurses-dev \
+        nano \
+        ninja-build \
+        pkg-config \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================
+# dev-tooling
+# ============================================================
+FROM dev-core AS dev-tooling
+
+ARG SERVER_USER
+ARG PP_DEV_USE_VIM
+
+WORKDIR /opt
+
+# system scripts
+COPY ./docker/assets/dev/system/sbin/ /sbin
+RUN chmod 755 /sbin/docker-*
+
+# dev-tooling packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        debconf-utils \
+        fzf \
+        man-db \
+        neovim \
+        ripgrep \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# user files
+COPY ./docker/assets/dev/user /home/${SERVER_USER}
+RUN mkdir -p /home/${SERVER_USER}/bin \
+    && echo "PATH=/home/${SERVER_USER}/bin:${PATH}" >> /home/${SERVER_USER}/.bashrc \
+    && chown -R ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}
+
+# keyboard config
+COPY ./docker/assets/selections.conf /opt/selections.conf
+RUN apt-get update \
+    && debconf-set-selections < /opt/selections.conf \
+    && apt-get install -y --no-install-recommends keyboard-configuration \
+    && rm -rf /var/lib/apt/lists/*
+
+# sudo + shell setup
+RUN usermod -a -G sudo ${SERVER_USER} \
+    && echo "\n# developer setup\nif [ -f ~/.bashrc_dev ]; then\n    . ~/.bashrc_dev\nfi" >> /home/${SERVER_USER}/.bashrc
+
+# system config
+COPY ./docker/assets/dev/system/etc /etc
+RUN chmod 0440 /etc/sudoers.d/sudoers-custom \
+    && visudo -cf /etc/sudoers.d/sudoers-custom
+
+# startup script config
+RUN chmod 755 /sbin/docker-* \
+    && sed -i "6iexport SERVER_USER=\"${SERVER_USER}\"\nexport SERVER_GROUP=\"${SERVER_USER}\"" /sbin/docker-start-container.sh
+
+# extra bashrc includes - uncomment if needed
+# COPY bashrc_include* /home/${SERVER_USER}/
+# RUN for incfile in /home/${SERVER_USER}/bashrc_include*; do \
+#       if [ -f "${incfile}" ]; then \
+#         cat "${incfile}" >> /home/${SERVER_USER}/.bashrc; \
+#       fi; \
+#     done
+
+ENTRYPOINT ["/sbin/docker-start-container.sh"]
+
+# ============================================================
+# dev-gui
+# ============================================================
+FROM dev-tooling AS dev-gui
+
+ARG SERVER_USER
+ARG PP_DEV_USE_VIM
+
+WORKDIR /opt
+
+# dev-gui packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        feh \
+        meld \
+        libcanberra-gtk-module \
+        x11-apps \
+    && rm -rf /var/lib/apt/lists/*
+
+# VS Code
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+      | gpg --dearmor > /usr/share/keyrings/microsoft-vscode.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-vscode.gpg] https://packages.microsoft.com/repos/code stable main" \
+      > /etc/apt/sources.list.d/vscode.list
+
+RUN apt-get update \
+    && echo "code code/add-microsoft-repo boolean true" | debconf-set-selections \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends code \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN echo "export DONT_PROMPT_WSL_INSTALL=1" >> /home/${SERVER_USER}/.bashrc
+
+RUN if [ ! -f /home/${SERVER_USER}/.config/Code/User/settings.json ]; then \
+      mkdir -p /home/${SERVER_USER}/.config/Code/User \
+      && echo '{\n    "workbench.colorTheme": "Abyss"\n}' > /home/${SERVER_USER}/.config/Code/User/settings.json; \
+    fi \
+    && chown -R ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}/.config
+
+# Wrap code to disable sandbox in containers
+RUN mv /usr/bin/code /usr/bin/code.real && \
+    printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec /usr/bin/code.real --no-sandbox "$@"' \
+    > /usr/bin/code && \
+    chmod +x /usr/bin/code
+
+ENTRYPOINT ["/sbin/docker-start-container.sh"]
+
+# ============================================================
+# dev-obsolete
+# ============================================================
+FROM base AS dev-obsolete
+
+ARG SERVER_USER
+ARG PP_DEV_USE_VIM
+
+WORKDIR /opt
 
 # system scripts
 COPY ./docker/assets/dev/system/sbin/ /sbin
@@ -88,9 +209,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         feh \
         gdb \
         git \
-        git-core \
-        git-man \
-        influxdb-client \
         less \
         libcanberra-gtk-module \
         libz-dev \
@@ -104,12 +222,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxinerama1 \
         libxrandr2 \
         man-db \
-        maven \
         meld \
         nano \
-        netcat \
-        openjdk-11-jdk \
-        openssh-client \
+        netcat-openbsd \
         openssl \
         pkg-config \
         python3 \
@@ -119,12 +234,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo \
         udev \
         unzip \
-        vim \
         x11-apps \
         zlib1g-dev \
-    && pkg-config --cflags --libs clp
+    && pkg-config --cflags --libs clp \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
+RUN apt-get install -y python3-venv python3-pip python3-dev
 
 # user files
 COPY ./docker/assets/dev/user /home/${SERVER_USER}

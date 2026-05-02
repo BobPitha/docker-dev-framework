@@ -51,12 +51,45 @@ base:
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
 
+dev-core:
+	bin/banner Docker *DEVELOPMENT* build ${DOCKER_IMAGE_TAG_ROOT}:v${VERSION}
+	docker build \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:v${VERSION} \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:latest \
+		--target dev-core \
+		--build-arg FROM_IMAGE=${DOCKER_ROOT_IMAGE} \
+		--build-arg SERVER_USER=${SERVER_USER} \
+		${CACHE_OPTION} \
+		-f ${DOCKERFILE} .
+
+dev-tooling:
+	bin/banner Docker *DEVELOPMENT* build ${DOCKER_IMAGE_TAG_ROOT}:v${VERSION}
+	docker build \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:v${VERSION} \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:latest \
+		--target dev-tooling \
+		--build-arg FROM_IMAGE=${DOCKER_ROOT_IMAGE} \
+		--build-arg SERVER_USER=${SERVER_USER} \
+		${CACHE_OPTION} \
+		-f ${DOCKERFILE} .
+
 dev:
 	bin/banner Docker *DEVELOPMENT* build ${DOCKER_IMAGE_TAG_ROOT}:v${VERSION}
 	docker build \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:v${VERSION} \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:latest \
-		--target dev \
+		--target dev-gui \
+		--build-arg FROM_IMAGE=${DOCKER_ROOT_IMAGE} \
+		--build-arg SERVER_USER=${SERVER_USER} \
+		${CACHE_OPTION} \
+		-f ${DOCKERFILE} .
+
+dev-obsolete:
+	bin/banner Docker *DEVELOPMENT* build ${DOCKER_IMAGE_TAG_ROOT}:v${VERSION}
+	docker build \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:v${VERSION} \
+		-t ${DOCKER_IMAGE_TAG_ROOT}-dev:latest \
+		--target dev-obsolete \
 		--build-arg FROM_IMAGE=${DOCKER_ROOT_IMAGE} \
 		--build-arg SERVER_USER=${SERVER_USER} \
 		${CACHE_OPTION} \
