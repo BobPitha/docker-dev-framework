@@ -67,7 +67,7 @@ clean:
 	@for suffix in base dev prod; do \
 		echo "Cleaning ${DOCKER_IMAGE_TAG_ROOT}-$$suffix:v${VERSION}"; \
 		docker rmi ${DOCKER_IMAGE_TAG_ROOT}-$$suffix:v${VERSION} 2>/dev/null || true; \
-		docker rmi ${DOCKER_IMAGE_TAG_ROOT}-$$suffix:latest
+		docker rmi ${DOCKER_IMAGE_TAG_ROOT}-$$suffix:latest 2>/dev/null || true; \
 	done
 
 # Remove ALL locally built images for this project
@@ -75,7 +75,7 @@ clean-all:
 	@echo "Removing all locally built ${DOCKER_IMAGE_TAG_ROOT} images..."
 	@docker images --format '{{.Repository}}:{{.Tag}}' \
 		| grep '^${DOCKER_IMAGE_TAG_ROOT}' \
-		| xargs -r docker rmi 2>/dev/null || true
+		| xargs -r docker rmi 2>/dev/null || true \
 	@echo "Done."
 
 help:
