@@ -1,8 +1,9 @@
-#!/bin/bash -x
+#!/usr/bin/env bash
+set -euo pipefail
+set -x
 
-# Use the following lines to specify the development user and group
-# export SERVER_USER=username
-# export SERVER_TROUP=groupname
+export SERVER_USER=bob
+export SERVER_GROUP=bob
 
 /sbin/docker-setup-user.sh
-/sbin/docker-start-sleep-loop.sh
+exec /sbin/docker-start-sleep-loop.sh

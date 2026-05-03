@@ -90,7 +90,6 @@ HOST_GID="$(id -g)"
 printf "%s\n" "Starting image ${TARGET_IMAGE_NAME} as ${CONTAINER_NAME}"
 
 docker run \
-    --rm \
     --tty \
     --detach \
     --name "${CONTAINER_NAME}" \

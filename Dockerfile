@@ -100,6 +100,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         neovim \
         ripgrep \
         sudo \
+        xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # user files
