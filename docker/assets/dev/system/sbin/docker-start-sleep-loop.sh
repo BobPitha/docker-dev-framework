@@ -1,6 +1,5 @@
-#!/bin/bash -x
+#!/bin/bash
+set -euo pipefail
 
-echo "entering sleep loop"
-while true; do
-    sleep 5
-done
+echo "Container ready. Keeping alive..."
+exec sleep infinity

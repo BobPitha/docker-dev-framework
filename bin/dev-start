@@ -23,6 +23,8 @@ PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
 [ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
 source "${PROJECT_ENV}"
 
+SERVER_GROUP="${SERVER_GROUP:-${SERVER_USER}}"
+
 IS_GIT_DIR=$(if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
 VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; else echo local ; fi)
 
@@ -101,6 +103,8 @@ docker run \
     --env "QT_X11_NO_MITSHM=1" \
     --env "HOST_UID=${HOST_UID}" \
     --env "HOST_GID=${HOST_GID}" \
+    --env "SERVER_USER=${SERVER_USER}" \
+    --env "SERVER_GROUP=${SERVER_GROUP}" \
     --volume "${XSOCK}:${XSOCK}:rw" \
     "${WORKSPACE_MOUNTS[@]}" \
     "${TARGET_IMAGE_NAME}"
