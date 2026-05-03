@@ -29,22 +29,27 @@ VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; els
 TARGET_IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev:v${VERSION}"
 CONTAINER_NAME="${PROJECT}-dev"
 
-RUNNING_CONTAINER_ID="$( docker ps --quiet --filter "name=^/${CONTAINER_NAME}$" )"
-if [[ -n "${RUNNING_CONTAINER_ID}" ]]; then
-  RUNNING_IMAGE="$( docker inspect --format='{{.Config.Image}}' "${RUNNING_CONTAINER_ID}" )"
+EXISTING_CONTAINER_ID="$(docker ps -aq --filter "name=^/${CONTAINER_NAME}$" | head -n 1)"
+if [[ -n "${EXISTING_CONTAINER_ID}" ]]; then
+  RUNNING="$(docker inspect --format='{{.State.Running}}' "${EXISTING_CONTAINER_ID}")"
 
-  if [[ "${RUNNING_IMAGE}" != "${TARGET_IMAGE_NAME}" ]]; then
-    echo "ERROR: container ${CONTAINER_NAME} is already running from:"
-    echo "  ${RUNNING_IMAGE}"
-    echo "Expected:"
-    echo "  ${TARGET_IMAGE_NAME}"
-    echo
-    echo "Stop the container and rebuild/start the current version."
-    exit 1
+  if [[ "${RUNNING}" = "true" ]]; then
+    RUNNING_IMAGE="$(docker inspect --format='{{.Config.Image}}' "${EXISTING_CONTAINER_ID}")"
+
+    if [[ "${RUNNING_IMAGE}" != "${TARGET_IMAGE_NAME}" ]]; then
+      echo "ERROR: container ${CONTAINER_NAME} is already running from:"
+      echo "  ${RUNNING_IMAGE}"
+      echo "Expected:"
+      echo "  ${TARGET_IMAGE_NAME}"
+      exit 1
+    fi
+
+    echo "Container ${CONTAINER_NAME} is already running with expected image ${TARGET_IMAGE_NAME}"
+    exit 0
   fi
 
-  echo "Container ${CONTAINER_NAME} is already running with expected image ${TARGET_IMAGE_NAME}"
-  exit 0
+  echo "Removing stopped container ${CONTAINER_NAME}"
+  docker rm "${EXISTING_CONTAINER_ID}" >/dev/null
 fi
 
 if [ -z "$(docker images -q "${TARGET_IMAGE_NAME}")" ]; then
@@ -72,9 +77,9 @@ fi
 command -v xauth >/dev/null 2>&1 || { printf '%s\n' "xauth not found" >&2; exit 1; }
 
 XSOCK=/tmp/.X11-unix
-XAUTH_HOST="$(mktemp /tmp/.docker.xauth.XXXXX)"
+XAUTH_HOST="/tmp/.docker.xauth.${CONTAINER_NAME}"
 XAUTH_CONTAINER="/tmp/.docker.xauth"
-trap 'rm -f "${XAUTH_HOST}"' EXIT
+rm -f "${XAUTH_HOST}"
 touch "${XAUTH_HOST}"
 xauth nlist "${DISPLAY}" | sed -e 's/^..../ffff/' | xauth -f "${XAUTH_HOST}" nmerge -
 chmod 644 "${XAUTH_HOST}"

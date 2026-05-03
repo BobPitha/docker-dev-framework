@@ -6,7 +6,7 @@
 STAGE ?= dev-gui
 
 # Derive suffix: dev-* -> "dev", else -> stage name
-TAG_SUFFIX = $(STAGE)
+TAG_SUFFIX = $(if $(filter dev-%,$(STAGE)),dev,$(STAGE))
 
 # Derive banner (uppercase, hyphens to spaces)
 BANNER_MSG = $(shell echo $(STAGE) | tr '[:lower:]-' '[:upper:] ')
