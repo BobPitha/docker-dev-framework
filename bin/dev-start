@@ -23,7 +23,11 @@ PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
 [ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
 source "${PROJECT_ENV}"
 
+SERVER_USER="${SERVER_USER:-$(id -un)}"
 SERVER_GROUP="${SERVER_GROUP:-${SERVER_USER}}"
+
+: "${ORGANIZATION:?ORGANIZATION not set}"
+: "${PROJECT:?PROJECT not set}"
 
 IS_GIT_DIR=$(if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
 VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; else echo local ; fi)
@@ -64,13 +68,13 @@ if [[ -f "${REPO_ROOT}/workspace-config/workspace_dirs.bash" ]]; then
     source "${REPO_ROOT}/workspace-config/workspace_dirs.bash"
     if declare -p WORKSPACE_DIRS >/dev/null 2>&1; then
         for dir in "${WORKSPACE_DIRS[@]}"; do
-        EXPANDED="$(expand_path "$dir")" || {
-            echo "Invalid path: $dir"
-            continue
-        }
-        ABS="$(realpath "${EXPANDED}")"
-        NAME="$(basename "${ABS}")"
-        WORKSPACE_MOUNTS+=(--mount type=bind,source="${ABS}",target="/workspace/${NAME}")
+          EXPANDED="$(expand_path "$dir")" || {
+              echo "Invalid path: $dir"
+              continue
+          }
+          ABS="$(realpath "${EXPANDED}")"
+          NAME="$(basename "${ABS}")"
+          WORKSPACE_MOUNTS+=(--mount type=bind,source="${ABS}",target="/workspace/${NAME}")
         done
     fi
 fi
@@ -79,6 +83,7 @@ fi
 command -v xauth >/dev/null 2>&1 || { printf '%s\n' "xauth not found" >&2; exit 1; }
 
 XSOCK=/tmp/.X11-unix
+[[ -d "${XSOCK}" ]] || { echo "X11 socket dir not found: ${XSOCK}" >&2; exit 1; }
 XAUTH_HOST="/tmp/.docker.xauth.${CONTAINER_NAME}"
 XAUTH_CONTAINER="/tmp/.docker.xauth"
 rm -f "${XAUTH_HOST}"

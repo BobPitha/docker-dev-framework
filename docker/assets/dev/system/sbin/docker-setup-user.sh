@@ -20,19 +20,17 @@ EXISTING_USER="$(getent passwd "$HOST_UID" | cut -d: -f1 || true)"
 if [[ -n "$EXISTING_USER" && "$EXISTING_USER" != "$SERVER_USER" ]]; then
     userdel -r "$EXISTING_USER" 2>/dev/null || userdel "$EXISTING_USER"
 fi
-usermod -u "$HOST_UID" "$SERVER_USER"  # Automatically updates home dir ownership
 
 # Handle GID mapping (gracefully handle conflicts)
 EXISTING_GROUP="$(getent group "$HOST_GID" | cut -d: -f1 || true)"
 if [[ -n "$EXISTING_GROUP" && "$EXISTING_GROUP" != "$SERVER_GROUP" ]]; then
     usermod -g "$EXISTING_GROUP" "$SERVER_USER"
 else
-    groupmod -g "$HOST_GID" "$SERVER_GROUP" 2>/dev/null || \
-    usermod -g "$HOST_GID" "$SERVER_USER" 2>/dev/null || true
+    groupmod -g "$HOST_GID" "$SERVER_GROUP"
+    usermod -g "$SERVER_GROUP" "$SERVER_USER"
 fi
 
-# usermod -u already updates home dir ownership on Ubuntu/Debian, 
-# but explicit chown ensures consistency if mounts interfere
+usermod -u "$HOST_UID" "$SERVER_USER" 
 chown -R "$HOST_UID:$HOST_GID" "/home/$SERVER_USER" 2>/dev/null || true
 
 touch /.docker-setup-user-complete

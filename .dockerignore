@@ -1,0 +1,13 @@
+# Build context exclusions
+.git
+*.md
+!.env
+!.env.example
+workspace-config/*
+!workspace-config/
+!workspace-config/project.env
+!workspace-config/workspace_dirs.bash
+**/.vscode/*
+!docker/assets/dev/user/.config/Code/User/settings.json
+__pycache__/
+*.pyc

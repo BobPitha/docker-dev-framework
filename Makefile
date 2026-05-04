@@ -5,6 +5,8 @@
 # Default stage for bare 'make'
 STAGE ?= dev-gui
 
+CACHE_OPTION ?=
+
 # Derive suffix: dev-* -> "dev", else -> stage name
 TAG_SUFFIX = $(if $(filter dev-%,$(STAGE)),dev,$(STAGE))
 
@@ -41,6 +43,8 @@ build:
 		--target $(STAGE) \
 		--build-arg FROM_IMAGE="${DOCKER_ROOT_IMAGE}" \
 		--build-arg SERVER_USER="${SERVER_USER}" \
+		--build-arg ORGANIZATION="${ORGANIZATION}" \
+		--build-arg VERSION="${VERSION_LONG}" \
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
 
@@ -75,7 +79,7 @@ clean-all:
 	@echo "Removing all locally built ${DOCKER_IMAGE_TAG_ROOT} images..."
 	@docker images --format '{{.Repository}}:{{.Tag}}' \
 		| grep '^${DOCKER_IMAGE_TAG_ROOT}' \
-		| xargs -r docker rmi 2>/dev/null || true \
+		| xargs -r docker rmi 2>/dev/null || true
 	@echo "Done."
 
 help:
@@ -83,7 +87,8 @@ help:
 	@echo "  build       - Build dev image (default)"
 	@echo "  base        - Build base stage only"
 	@echo "  dev-core    - Build up to dev-core stage"
-	@echo "  dev-tooling - Build up to dev-tooling stage"  
+	@echo "  dev-tooling - Build up to dev-tooling stage"
+	@echo "  dev-gui     - Build full GUI dev image"
 	@echo "  dev         - Build full dev image (dev-gui stage)"
 	@echo "  prod        - Build production image (placeholder)"
 	@echo "  clean       - Remove locally built images"
