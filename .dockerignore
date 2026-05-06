@@ -11,3 +11,6 @@ workspace-config/*
 !docker/assets/dev/user/.config/Code/User/settings.json
 __pycache__/
 *.pyc
+!.generated/
+!.generated/ddf-build-hooks/
+!.generated/ddf-build-hooks/**

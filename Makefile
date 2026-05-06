@@ -1,5 +1,5 @@
 # Declare Makefile targets as .PHONY to avoid accidental collision with a real filename
-.PHONY: build base dev-core dev-tooling dev-gui dev prod clean clean-all help
+.PHONY: prepare-ddf-hooks show-ddf-hooks clean-ddf-hooks validate-ddf-hooks build base dev-core dev-tooling dev-gui dev prod clean clean-all help
 .DEFAULT_GOAL := build
 
 # Default stage for bare 'make'
@@ -34,8 +34,26 @@ DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${PROJECT}_img
 DOCKER_CONTAINER_NAME_ROOT := ${PROJECT}
 DOCKERFILE := Dockerfile
 
+prepare-ddf-hooks:
+	bin/collect-ddf-hooks.sh
+
+show-ddf-hooks: prepare-ddf-hooks
+	find .generated/ddf-build-hooks -type f | sort
+	@echo
+	@find .generated/ddf-build-hooks -name manifest.tsv -print -exec cat {} \;
+
+clean-ddf-hooks:
+	rm -rf .generated/ddf-build-hooks
+
+validate-ddf-hooks: prepare-ddf-hooks
+	@find .generated/ddf-build-hooks -type f -name '*.sh' -print0 | xargs -0 -r bash -n
+
 # Single build recipe
-build:
+build: validate-ddf-hooks
+ifeq ($(DRY_RUN),1)
+	@echo "DRY_RUN=1: skipping docker build"
+	@find .generated/ddf-build-hooks -type f | sort
+else
 	bin/banner Docker *$(BANNER_MSG)* build ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION}
 	docker build \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION} \
@@ -47,6 +65,8 @@ build:
 		--build-arg VERSION="${VERSION_LONG}" \
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
+endif
+
 
 base: STAGE = base
 base: build
@@ -84,7 +104,10 @@ clean-all:
 
 help:
 	@echo "DDF Makefile targets:"
-	@echo "  build       - Build dev image (default)"
+	@echo "  show-ddf-hooks     - Generate and list collected DDF hooks"
+	@echo "  validate-ddf-hooks - Syntax-check collected hook scripts"
+	@echo "  clean-ddf-hooks    - Remove generated DDF hook files"
+	@echo "  build       - Build default stage (default: dev-gui)"
 	@echo "  base        - Build base stage only"
 	@echo "  dev-core    - Build up to dev-core stage"
 	@echo "  dev-tooling - Build up to dev-tooling stage"
@@ -94,6 +117,7 @@ help:
 	@echo "  clean       - Remove locally built images"
 	@echo ""
 	@echo "Variables:"
+	@echo "  DRY_RUN=1          - Generate hooks but skip docker build"
 	@echo "  DOCKER_ROOT_IMAGE  - Base image (default: ubuntu:noble)"
 	@echo "  ORGANIZATION       - Docker org/user (default: current user)"
 	@echo "  PROJECT            - Project name (default: repo basename)"

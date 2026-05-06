@@ -18,6 +18,9 @@ ARG VERSION="Unknown"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+COPY ./docker/assets/build/system/opt/ddf/run-ddf-build-hooks.sh /opt/ddf/run-ddf-build-hooks.sh
+RUN chmod 755 /opt/ddf/run-ddf-build-hooks.sh
+
 RUN if [ "$FROM_IMAGE" = "ubuntu:0.1" ]; then \
       echo "ERROR: FROM_IMAGE not set; pass --build-arg FROM_IMAGE=..."; \
       exit 1; \
@@ -53,6 +56,9 @@ RUN useradd -m -G dialout,video,plugdev -s /bin/bash ${SERVER_USER}
 RUN mkdir -p /workspace \
     && chown ${SERVER_USER}:${SERVER_USER} /workspace
 
+COPY .generated/ddf-build-hooks/base/ /opt/ddf/build-hooks/base/
+RUN /opt/ddf/run-ddf-build-hooks.sh base
+
 # ============================================================
 # dev-core
 # ============================================================
@@ -86,6 +92,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+COPY .generated/ddf-build-hooks/dev-core/ /opt/ddf/build-hooks/dev-core/
+RUN /opt/ddf/run-ddf-build-hooks.sh dev-core
+
 # ============================================================
 # dev-tooling
 # ============================================================
@@ -116,9 +125,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # user files
 COPY ./docker/assets/dev/user /home/${SERVER_USER}
 RUN mkdir -p /home/${SERVER_USER}/bin \
-    && echo "PATH=/home/${SERVER_USER}/bin:${PATH}" >> /home/${SERVER_USER}/.bashrc \
+    && printf '%s\n' \
+      'case ":$PATH:" in' \
+      '  *:"$HOME/bin":*) ;;' \
+      '  *) export PATH="$HOME/bin:$PATH" ;;' \
+      'esac' \
+      >> /home/${SERVER_USER}/.bashrc \
     && chown -R ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}
-
 # keyboard config
 COPY ./docker/assets/selections.conf /opt/selections.conf
 RUN apt-get update \
@@ -142,6 +155,9 @@ RUN chmod 0440 /etc/sudoers.d/sudoers-custom \
 #         cat "${incfile}" >> /home/${SERVER_USER}/.bashrc; \
 #       fi; \
 #     done
+
+COPY .generated/ddf-build-hooks/dev-tooling/ /opt/ddf/build-hooks/dev-tooling/
+RUN /opt/ddf/run-ddf-build-hooks.sh dev-tooling
 
 ENTRYPOINT ["/sbin/docker-start-container.sh"]
 
@@ -170,6 +186,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         x11-apps \
     && fc-cache -fv \
     && rm -rf /var/lib/apt/lists/*
+
 
 # VS Code environment & installation
 # ENV LIBGL_ALWAYS_SOFTWARE=1
@@ -215,6 +232,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # chmod +x /usr/bin/code
 # WRAPPER
 
+COPY .generated/ddf-build-hooks/dev-gui/ /opt/ddf/build-hooks/dev-gui/
+RUN /opt/ddf/run-ddf-build-hooks.sh dev-gui
+
 ENTRYPOINT ["/sbin/docker-start-container.sh"]
 
 # ============================================================
@@ -234,3 +254,6 @@ WORKDIR /app
 
 USER ${SERVER_USER}
 CMD ["bash", "-lc", "echo 'prod stage placeholder'; exit 1"]
+
+COPY .generated/ddf-build-hooks/prod/ /opt/ddf/build-hooks/prod/
+RUN /opt/ddf/run-ddf-build-hooks.sh prod
