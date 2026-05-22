@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DDF_FRAMEWORK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "${DDF_FRAMEWORK_ROOT}/config/ddf-host.env"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_CONFIG="${ROOT_DIR}/workspace-config/workspace_dirs.bash"
-OUT_ROOT="${ROOT_DIR}/.generated/ddf-build-hooks"
+OUT_ROOT="${ROOT_DIR}/"${DDF_GENERATED_DIR}"/ddf-build-hooks"
 
 STAGES=(base dev-core dev-tooling dev-gui prod)
 

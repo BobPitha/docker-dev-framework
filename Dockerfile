@@ -57,7 +57,8 @@ RUN mkdir -p /workspace \
     && chown ${SERVER_USER}:${SERVER_USER} /workspace
 
 COPY .generated/ddf-build-hooks/base/ /opt/ddf/build-hooks/base/
-RUN /opt/ddf/run-ddf-build-hooks.sh base
+RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
+    /opt/ddf/run-ddf-build-hooks.sh base
 
 # ============================================================
 # dev-core
@@ -93,7 +94,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY .generated/ddf-build-hooks/dev-core/ /opt/ddf/build-hooks/dev-core/
-RUN /opt/ddf/run-ddf-build-hooks.sh dev-core
+RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
+    /opt/ddf/run-ddf-build-hooks.sh dev-core
 
 # ============================================================
 # dev-tooling
@@ -157,7 +159,8 @@ RUN chmod 0440 /etc/sudoers.d/sudoers-custom \
 #     done
 
 COPY .generated/ddf-build-hooks/dev-tooling/ /opt/ddf/build-hooks/dev-tooling/
-RUN /opt/ddf/run-ddf-build-hooks.sh dev-tooling
+RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
+    /opt/ddf/run-ddf-build-hooks.sh dev-tooling
 
 ENTRYPOINT ["/sbin/docker-start-container.sh"]
 
@@ -233,7 +236,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # WRAPPER
 
 COPY .generated/ddf-build-hooks/dev-gui/ /opt/ddf/build-hooks/dev-gui/
-RUN /opt/ddf/run-ddf-build-hooks.sh dev-gui
+RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
+    /opt/ddf/run-ddf-build-hooks.sh dev-gui
 
 ENTRYPOINT ["/sbin/docker-start-container.sh"]
 
@@ -256,4 +260,5 @@ USER ${SERVER_USER}
 CMD ["bash", "-lc", "echo 'prod stage placeholder'; exit 1"]
 
 COPY .generated/ddf-build-hooks/prod/ /opt/ddf/build-hooks/prod/
-RUN /opt/ddf/run-ddf-build-hooks.sh prod
+RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
+    /opt/ddf/run-ddf-build-hooks.sh prod

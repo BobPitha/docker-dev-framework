@@ -21,6 +21,6 @@ fi
 echo "Running DDF build hooks for stage: $stage"
 
 for hook in "${hooks[@]}"; do
-  echo "Running: $hook"
+  printf '%s\n' "----- Running build hook: ${stage}/${hook} -----"
   bash "$hook"
 done

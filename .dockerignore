@@ -14,3 +14,5 @@ __pycache__/
 !.generated/
 !.generated/ddf-build-hooks/
 !.generated/ddf-build-hooks/**
+!.generated/ddf-libs/
+!.generated/ddf-libs/**

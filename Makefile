@@ -6,6 +6,20 @@
 STAGE ?= dev-gui
 
 CACHE_OPTION ?=
+NO_CACHE ?= 0
+PLAIN_PROGRESS ?= 0
+
+ifeq ($(NO_CACHE),1)
+CACHE_OPTION := --no-cache
+else
+CACHE_OPTION :=
+endif
+
+ifeq ($(PLAIN_PROGRESS),1)
+PROGRESS_OPTION := --progress=plain
+else
+PROGRESS_OPTION :=
+endif
 
 # Derive suffix: dev-* -> "dev", else -> stage name
 TAG_SUFFIX = $(if $(filter dev-%,$(STAGE)),dev,$(STAGE))
@@ -34,10 +48,18 @@ DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${PROJECT}_img
 DOCKER_CONTAINER_NAME_ROOT := ${PROJECT}
 DOCKERFILE := Dockerfile
 
+DOCKER_BUILDKIT ?= 1
+export DOCKER_BUILDKIT
+
+prepare-ddf-libs:
+	bin/collect-ddf-libs.sh
+
 prepare-ddf-hooks:
 	bin/collect-ddf-hooks.sh
 
-show-ddf-hooks: prepare-ddf-hooks
+prepare-ddf: prepare-ddf-hooks prepare-ddf-libs
+
+show-ddf-hooks: prepare-ddf
 	find .generated/ddf-build-hooks -type f | sort
 	@echo
 	@find .generated/ddf-build-hooks -name manifest.tsv -print -exec cat {} \;
@@ -45,7 +67,12 @@ show-ddf-hooks: prepare-ddf-hooks
 clean-ddf-hooks:
 	rm -rf .generated/ddf-build-hooks
 
-validate-ddf-hooks: prepare-ddf-hooks
+clean-ddf-libs:
+	rm -rf .generated/ddf-libs
+
+clean-ddf-generated: clean-ddf-hooks clean-ddf-libs
+
+validate-ddf-hooks: prepare-ddf
 	@find .generated/ddf-build-hooks -type f -name '*.sh' -print0 | xargs -0 -r bash -n
 
 # Single build recipe
@@ -56,6 +83,7 @@ ifeq ($(DRY_RUN),1)
 else
 	bin/banner Docker *$(BANNER_MSG)* build ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION}
 	docker build \
+		${PROGRESS_OPTION} \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION} \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:latest \
 		--target $(STAGE) \
@@ -66,7 +94,6 @@ else
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
 endif
-
 
 base: STAGE = base
 base: build
@@ -118,6 +145,8 @@ help:
 	@echo ""
 	@echo "Variables:"
 	@echo "  DRY_RUN=1          - Generate hooks but skip docker build"
+	@echo "  NO_CACHE=1         - Disable Docker build cache"
+	@echo "  PLAIN_PROGRESS=1   - Use plain progress output for Docker build"
 	@echo "  DOCKER_ROOT_IMAGE  - Base image (default: ubuntu:noble)"
 	@echo "  ORGANIZATION       - Docker org/user (default: current user)"
 	@echo "  PROJECT            - Project name (default: repo basename)"
