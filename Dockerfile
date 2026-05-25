@@ -56,6 +56,16 @@ RUN useradd -m -G dialout,video,plugdev -s /bin/bash ${SERVER_USER}
 RUN mkdir -p /workspace \
     && chown ${SERVER_USER}:${SERVER_USER} /workspace
 
+RUN cat >>/etc/bash.bashrc <<'EOF'
+
+# Execute DDF profile snippets
+if [ -d /etc/profile.d ]; then
+  for f in /etc/profile.d/ddf-*.sh; do
+    [ -f "$f" ] && . "$f"
+  done
+fi
+EOF
+
 COPY .generated/ddf-build-hooks/base/ /opt/ddf/build-hooks/base/
 RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
     /opt/ddf/run-ddf-build-hooks.sh base
