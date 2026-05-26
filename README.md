@@ -80,6 +80,7 @@ $ make
 ### Enter the container
 ```
 $ ddf shell
+bob@ddf-dev:~$
 ```
 
 ## 3. Core Concepts
