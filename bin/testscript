@@ -1,2 +1,2 @@
 #!/bin/bash
-source workspace-config/project.env
+source workspace-config/workspace.env

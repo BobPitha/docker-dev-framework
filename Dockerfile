@@ -52,9 +52,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
 # user setup
 RUN useradd -m -G dialout,video,plugdev -s /bin/bash ${SERVER_USER}
 
-# workspace
-RUN mkdir -p /workspace \
-    && chown ${SERVER_USER}:${SERVER_USER} /workspace
+# /projects directory
+RUN mkdir -p /projects \
+    && chown ${SERVER_USER}:${SERVER_USER} /projects
 
 RUN cat >>/etc/bash.bashrc <<'EOF'
 

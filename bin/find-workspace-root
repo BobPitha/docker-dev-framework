@@ -3,7 +3,7 @@
 set -e
 
 if repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
-    if [ -f "${repo_root}/workspace-config/project.env" ]; then
+    if [ -f "${repo_root}/workspace-config/workspace.env" ]; then
         printf '%s\n' "$repo_root"
         exit 0
     fi
@@ -11,7 +11,7 @@ fi
 
 dir="${PWD}"
 while [[ "${dir}" != "/" ]]; do
-    if [[ -f "${dir}/workspace-config/project.env" ]]; then
+    if [[ -f "${dir}/workspace-config/workspace.env" ]]; then
         printf '%s\n' "${dir}"
         exit 0
     fi

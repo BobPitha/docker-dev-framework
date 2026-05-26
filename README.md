@@ -7,7 +7,7 @@ A flexible and configurable docker-based development framework for working on va
 4) Advanced mechanics / Reference
 
 ## 1. Overview
-What DDF is:
+### What DDF is:
 - Multi-stage Docker-based development framework
 - Project-driven customization
 - Supports customization by project-driven build hooks
@@ -21,7 +21,7 @@ What DDF is:
   - Multi-project workspaces
   - Any Linux flavor
 
-Design Goals:
+### Design Goals:
 - Reproducible
 - Composable
 - Project-owned customization
@@ -33,9 +33,19 @@ DDF is intended to be a flexible environment that can be used as a development e
 
 An important advantage to a container-based IDE is that all the customization to support the development environment goes inside the container. You're not plugging all sorts of random stuff into your host operating system, potentally installing incompatible versions and having to carefully manage the configuration. Instead, the installed packages and verions are easily managed via the DDF Dockerfile and the project customization hooks.
 
-The basic idea is the container can be customized (via customization hooks in the project workspaces, thus not requireing DDF modification for each project) to build in whatever required resources the project needs. It can (will) support the building of two different containers: an interactive development container, and a turnkey production container suitable for depooyment to a VM or the cloud.
+The basic idea is the container can be customized (via customization hooks in the project directories, thus not requireing DDF modification for each project) to build in whatever required resources the project needs. It can (will) support the building of two different containers: an interactive development container, and a turnkey production container suitable for depooyment to a VM or the cloud.
 
 The interactive development container supports GUI applications. I've used VS Code inside the ontainer in the past, but now it seems VS Code with the Microsoft Dev Containers extension.
+
+### Glossary
+Terms and concepts in this space:
+| Term | Definition |
+|------|------------|
+| Container | The live instance of a Docker image |
+| Image | The output of the Docker build operation, it's a potential container. |
+| Project | A directory tree containing code that is under development in DDF. Each project can supply its own development hooks to customize the built Docker image. |
+| Workspace | The docker framework, potentially containing one or more projects. Except for the local workspace-config data, this should usually be an unaltered copy of the DDF repo. |
+
 
 ## 2. Quick Start
 
@@ -53,8 +63,8 @@ git clone git@github.com:BobPitha/docker-dev-framework.git [dirname]
 ```
 
 ### Configure workspace-config files
-There are two files to configure here: project.env and workspace_dirs.bash.
-#### project.env
+There are two files to configure here: workspace.env and project_dirs.bash.
+#### workspace.env
 There are four variables to configure here: *asdf* 
 
 - PROJECT= _the project name, will be used to build the container name_.
@@ -62,14 +72,17 @@ There are four variables to configure here: *asdf*
 - SERVER_USER= _used as the username inside the dev container_.
 - DOCKER_ROOT_IMAGE= _The docker image to use as the starting point_.
 
-#### workspace_dirs.bash
-This file contains the list of project directories to be mounted into the container. An example workspace_dirs.bash might be:
+#### project_dirs.bash
+This file contains the list of project directories to be mounted into the container. An example project_dirs.bash might be:
 ```
-WORKSPACE_DIRS=(
-    ${HOME}/dev/emulate/jetson_provisioning/ava_setup
+PROJECT_DIRS=(
+    ${HOME}/dev/foo
 )
 ```
-This mounts a single directory, ava_setup, to the docker. It will be mounted to /workspace/ava_setup. You can list as many directories as you like, each on a separate line with no commas or other punctuation between them. Be careful not to try to mount two directories with identical names; DDF isn't smart enough to handle that.
+This mounts a single directory, foo, to the docker. It will be mounted to /projects/ava_setup. You can list as many directories as you like, each on a separate line with no commas or other punctuation between them. Be careful not to try to mount two directories with identical names; DDF isn't smart enough to handle that.
+
+#### Make the ddf script executable (optional but recommended)
+There are some ddf commands (ddf shell, ddf stop, ddf clean, ddf clean-all) that use the ddf helper script. To avoid having to type a path to the ddf script in the ddf repo's bin directory, you can copy the script to a directory in your path.
 
 ### Build the container
 

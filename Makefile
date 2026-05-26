@@ -30,7 +30,7 @@ BANNER_MSG = $(shell echo $(STAGE) | tr '[:lower:]-' '[:upper:] ')
 IS_GIT_DIR := $(shell if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
 REPOSITORY_ROOT := $(shell if [ "$(IS_GIT_DIR)" = "yes" ] ; then git rev-parse --show-toplevel ; else dirname $(realpath $(firstword $(MAKEFILE_LIST))) ; fi)
 
-PROJECT_ENV := $(REPOSITORY_ROOT)/workspace-config/project.env
+PROJECT_ENV := $(REPOSITORY_ROOT)/workspace-config/workspace.env
 ifneq ("$(wildcard $(PROJECT_ENV))","")
 include $(PROJECT_ENV)
 export
@@ -41,11 +41,11 @@ VERSION_LONG := $(shell if [ "$(IS_GIT_DIR)" = "yes" ] ; then git rev-parse HEAD
 
 DOCKER_ROOT_IMAGE ?= ubuntu:noble
 ORGANIZATION ?= $(shell id -un)
-PROJECT ?= $(notdir $(REPOSITORY_ROOT))
+WORKSPACE_NAME ?= $(notdir $(REPOSITORY_ROOT))
 SERVER_USER ?= $(shell id -un)
 
-DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${PROJECT}_img
-DOCKER_CONTAINER_NAME_ROOT := ${PROJECT}
+DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${WORKSPACE_NAME}_img
+DOCKER_CONTAINER_NAME_ROOT := ${WORKSPACE_NAME}
 DOCKERFILE := Dockerfile
 
 DOCKER_BUILDKIT ?= 1

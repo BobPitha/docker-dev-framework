@@ -3,12 +3,12 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-readonly PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
+readonly PROJECT_ENV="${REPO_ROOT}/workspace-config/workspace.env"
 
-[ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
+[ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/workspace.env found" >&2; exit 1; }
 source "${PROJECT_ENV}"
 
-readonly CONTAINER_NAME="${PROJECT}-dev"
+readonly CONTAINER_NAME="${WORKSPACE_NAME}-dev"
 
 if docker ps --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
     printf '%s\n' "Stopping running container ${CONTAINER_NAME}"

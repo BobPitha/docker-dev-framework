@@ -18,22 +18,22 @@ expand_path() {
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
+WORKSPACE_ENV="${REPO_ROOT}/workspace-config/workspace.env"
 
-[ -f "${PROJECT_ENV}" ] || { printf '%s\n' "No workspace-config/project.env found" >&2; exit 1; }
-source "${PROJECT_ENV}"
+[ -f "${WORKSPACE_ENV}" ] || { printf '%s\n' "No workspace-config/workspace.env found" >&2; exit 1; }
+source "${WORKSPACE_ENV}"
 
 SERVER_USER="${SERVER_USER:-$(id -un)}"
 SERVER_GROUP="${SERVER_GROUP:-${SERVER_USER}}"
 
 : "${ORGANIZATION:?ORGANIZATION not set}"
-: "${PROJECT:?PROJECT not set}"
+: "${WORKSPACE_NAME:?WORKSPACE_NAME not set}"
 
 IS_GIT_DIR=$(if git rev-parse --git-dir > /dev/null 2>&1 ; then echo yes ; else echo no ; fi)
 VERSION=$(if [ "${IS_GIT_DIR}" = "yes" ] ; then git rev-parse --short HEAD ; else echo local ; fi)
 
-TARGET_IMAGE_NAME="${ORGANIZATION}/${PROJECT}_img-dev:v${VERSION}"
-CONTAINER_NAME="${PROJECT}-dev"
+TARGET_IMAGE_NAME="${ORGANIZATION}/${WORKSPACE_NAME}_img-dev:v${VERSION}"
+CONTAINER_NAME="${WORKSPACE_NAME}-dev"
 
 EXISTING_CONTAINER_ID="$(docker ps -aq --filter "name=^/${CONTAINER_NAME}$" | head -n 1)"
 if [[ -n "${EXISTING_CONTAINER_ID}" ]]; then
@@ -64,17 +64,17 @@ if [ -z "$(docker images -q "${TARGET_IMAGE_NAME}")" ]; then
 fi
 
 WORKSPACE_MOUNTS=()
-if [[ -f "${REPO_ROOT}/workspace-config/workspace_dirs.bash" ]]; then
-    source "${REPO_ROOT}/workspace-config/workspace_dirs.bash"
-    if declare -p WORKSPACE_DIRS >/dev/null 2>&1; then
-        for dir in "${WORKSPACE_DIRS[@]}"; do
+if [[ -f "${REPO_ROOT}/workspace-config/project_dirs.bash" ]]; then
+    source "${REPO_ROOT}/workspace-config/project_dirs.bash"
+    if declare -p PROJECT_DIRS >/dev/null 2>&1; then
+        for dir in "${PROJECT_DIRS[@]}"; do
           EXPANDED="$(expand_path "$dir")" || {
               echo "Invalid path: $dir"
               continue
           }
           ABS="$(realpath "${EXPANDED}")"
           NAME="$(basename "${ABS}")"
-          WORKSPACE_MOUNTS+=(--mount type=bind,source="${ABS}",target="/workspace/${NAME}")
+          WORKSPACE_MOUNTS+=(--mount type=bind,source="${ABS}",target="/projects/${NAME}")
         done
     fi
 fi

@@ -5,8 +5,8 @@
 !.env.example
 workspace-config/*
 !workspace-config/
-!workspace-config/project.env
-!workspace-config/workspace_dirs.bash
+!workspace-config/workspace.env
+!workspace-config/project_dirs.bash
 **/.vscode/*
 !docker/assets/dev/user/.config/Code/User/settings.json
 __pycache__/

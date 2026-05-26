@@ -5,7 +5,7 @@ DDF_FRAMEWORK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "${DDF_FRAMEWORK_ROOT}/config/ddf-host.env"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKSPACE_CONFIG="${ROOT_DIR}/workspace-config/workspace_dirs.bash"
+WORKSPACE_CONFIG="${ROOT_DIR}/workspace-config/project_dirs.bash"
 OUT_ROOT="${ROOT_DIR}/"${DDF_GENERATED_DIR}"/ddf-build-hooks"
 
 STAGES=(base dev-core dev-tooling dev-gui prod)
@@ -65,18 +65,18 @@ copy_dir_hooks() {
       done
 }
 
-for repo_dir in "${WORKSPACE_DIRS[@]}"; do
-  repo_dir="$(eval "printf '%s' \"$repo_dir\"")"
-  [[ -d "$repo_dir" ]] || continue
+for project_dir in "${PROJECT_DIRS[@]}"; do
+  project_dir="$(eval "printf '%s' \"$project_dir\"")"
+  [[ -d "$project_dir" ]] || continue
 
-  repo_name="$(sanitize_name "$repo_dir")"
+  project_name="$(sanitize_name "$project_dir")"
 
   for stage in "${STAGES[@]}"; do
-    build_dir="$repo_dir/.ddf/build"
+    build_dir="$project_dir/.ddf/build"
 
-    copy_hook      "$build_dir/all.sh"       "$stage" "$repo_dir" "$repo_name" "all-file"   "00"
-    copy_dir_hooks "$build_dir/all"          "$stage" "$repo_dir" "$repo_name" "all-dir"    "01"
-    copy_hook      "$build_dir/${stage}.sh"  "$stage" "$repo_dir" "$repo_name" "stage-file" "10"
-    copy_dir_hooks "$build_dir/${stage}"     "$stage" "$repo_dir" "$repo_name" "stage-dir"  "11"
+    copy_hook      "$build_dir/all.sh"       "$stage" "$project_dir" "$project_name" "all-file"   "00"
+    copy_dir_hooks "$build_dir/all"          "$stage" "$project_dir" "$project_name" "all-dir"    "01"
+    copy_hook      "$build_dir/${stage}.sh"  "$stage" "$project_dir" "$project_name" "stage-file" "10"
+    copy_dir_hooks "$build_dir/${stage}"     "$stage" "$project_dir" "$project_name" "stage-dir"  "11"
   done
 done

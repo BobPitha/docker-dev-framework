@@ -3,18 +3,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-PROJECT_ENV="${REPO_ROOT}/workspace-config/project.env"
+WORKSPACE_ENV="${REPO_ROOT}/workspace-config/workspace.env"
 
-if [ -f "${PROJECT_ENV}" ]; then
-    source "${PROJECT_ENV}"
+if [ -f "${WORKSPACE_ENV}" ]; then
+    source "${WORKSPACE_ENV}"
 else
-    printf '%s\n' "No workspace-config/project.env found; exiting" >&2
+    printf '%s\n' "No workspace-config/workspace.env found; exiting" >&2
     exit 1
 fi
 SERVER_USER="${SERVER_USER:-$(id -un)}"
-: "${PROJECT:?PROJECT not set}"
+: "${WORKSPACE_NAME:?WORKSPACE_NAME not set}"
 
-readonly CONTAINER_NAME="${PROJECT}-dev"
+readonly CONTAINER_NAME="${WORKSPACE_NAME}-dev"
 
 "${SCRIPT_DIR}/dev-start"
 
