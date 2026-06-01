@@ -31,6 +31,9 @@ else
 fi
 
 usermod -u "$HOST_UID" "$SERVER_USER" 
-chown -R "$HOST_UID:$HOST_GID" "/home/$SERVER_USER" 2>/dev/null || true
-
+# chown -R "$HOST_UID:$HOST_GID" "/home/$SERVER_USER" 2>/dev/null || true
+find "/home/$SERVER_USER" -xdev \
+  \( ! -user "$HOST_UID" -o ! -group "$HOST_GID" \) \
+  -exec chown "$HOST_UID:$HOST_GID" {} +
+  
 touch /.docker-setup-user-complete

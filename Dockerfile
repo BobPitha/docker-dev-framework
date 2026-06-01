@@ -50,8 +50,30 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && rm -rf /var/lib/apt/lists/*
 
 # user setup
-RUN useradd -m -G dialout,video,plugdev -s /bin/bash ${SERVER_USER}
+ARG SERVER_UID=1000
+ARG SERVER_GID=1000
 
+RUN set -eux; \
+    existing_user="$(getent passwd "${SERVER_UID}" | cut -d: -f1 || true)"; \
+    existing_group="$(getent group "${SERVER_GID}" | cut -d: -f1 || true)"; \
+    \
+    if [ -n "${existing_group}" ] && [ "${existing_group}" != "${SERVER_USER}" ]; then \
+        groupmod -n "${SERVER_USER}" "${existing_group}"; \
+    elif [ -z "${existing_group}" ]; then \
+        groupadd -g "${SERVER_GID}" "${SERVER_USER}"; \
+    fi; \
+    \
+    if [ -n "${existing_user}" ] && [ "${existing_user}" != "${SERVER_USER}" ]; then \
+        usermod -l "${SERVER_USER}" -d "/home/${SERVER_USER}" -m "${existing_user}"; \
+        usermod -g "${SERVER_GID}" "${SERVER_USER}"; \
+    elif id -u "${SERVER_USER}" >/dev/null 2>&1; then \
+        usermod -u "${SERVER_UID}" -g "${SERVER_GID}" "${SERVER_USER}"; \
+    else \
+        useradd -m -u "${SERVER_UID}" -g "${SERVER_GID}" -s /bin/bash "${SERVER_USER}"; \
+    fi; \
+    \
+    usermod -a -G dialout,video,plugdev "${SERVER_USER}"
+        
 # /projects directory
 RUN mkdir -p /projects \
     && chown ${SERVER_USER}:${SERVER_USER} /projects

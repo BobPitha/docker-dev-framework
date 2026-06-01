@@ -43,6 +43,8 @@ DOCKER_ROOT_IMAGE ?= ubuntu:noble
 ORGANIZATION ?= $(shell id -un)
 WORKSPACE_NAME ?= $(notdir $(REPOSITORY_ROOT))
 SERVER_USER ?= $(shell id -un)
+SERVER_UID ?= $(shell id -u)
+SERVER_GID ?= $(shell id -g)
 
 DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${WORKSPACE_NAME}_img
 DOCKER_CONTAINER_NAME_ROOT := ${WORKSPACE_NAME}
@@ -91,6 +93,8 @@ else
 		--build-arg SERVER_USER="${SERVER_USER}" \
 		--build-arg ORGANIZATION="${ORGANIZATION}" \
 		--build-arg VERSION="${VERSION_LONG}" \
+		--build-arg SERVER_UID="${SERVER_UID}" \
+		--build-arg SERVER_GID="${SERVER_GID}" \
 		${CACHE_OPTION} \
 		-f ${DOCKERFILE} .
 endif
