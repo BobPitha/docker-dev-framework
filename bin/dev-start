@@ -79,6 +79,22 @@ if [[ -f "${REPO_ROOT}/workspace-config/project_dirs.bash" ]]; then
     fi
 fi
 
+PROJECT_DOCKER_RUN_ARGS=()
+
+for project_dir in "${PROJECT_DIRS[@]}"; do
+  expanded="$(expand_path "$project_dir")"
+  abs="$(realpath "$expanded")"
+
+  if [ -d "${abs}/.ddf/runtime/dev-start.d" ]; then
+    for hook in "${abs}/.ddf/runtime/dev-start.d/"*.sh; do
+      echo "Hook: ${hook}"
+      [ -f "$hook" ] || continue
+      # shellcheck source=/dev/null
+      . "$hook"
+    done
+  fi
+done
+
 : "${DISPLAY:?DISPLAY is not set}"
 command -v xauth >/dev/null 2>&1 || { printf '%s\n' "xauth not found" >&2; exit 1; }
 
@@ -103,13 +119,14 @@ docker run \
     --hostname "${CONTAINER_NAME}" \
     --add-host "${CONTAINER_NAME}:127.0.0.1" \
     --env "DISPLAY" \
-    --volume "${XAUTH_HOST}:${XAUTH_CONTAINER}:ro" \
+    --mount type=bind,source="${XAUTH_HOST}",target="${XAUTH_CONTAINER}",readonly \
     --env "XAUTHORITY=${XAUTH_CONTAINER}" \
     --env "QT_X11_NO_MITSHM=1" \
     --env "HOST_UID=${HOST_UID}" \
     --env "HOST_GID=${HOST_GID}" \
     --env "SERVER_USER=${SERVER_USER}" \
     --env "SERVER_GROUP=${SERVER_GROUP}" \
-    --volume "${XSOCK}:${XSOCK}:rw" \
+    --mount type=bind,source="${XSOCK}",target="${XSOCK}" \
     "${WORKSPACE_MOUNTS[@]}" \
+    "${PROJECT_DOCKER_RUN_ARGS[@]}" \
     "${TARGET_IMAGE_NAME}"
