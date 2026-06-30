@@ -126,6 +126,8 @@ docker run \
     --env "HOST_GID=${HOST_GID}" \
     --env "SERVER_USER=${SERVER_USER}" \
     --env "SERVER_GROUP=${SERVER_GROUP}" \
+    --env "HOST_COLOR=${HOST_COLOR:-208}" \
+    --env "PATH_COLOR=${PATH_COLOR:-93}" \
     --mount type=bind,source="${XSOCK}",target="${XSOCK}" \
     "${WORKSPACE_MOUNTS[@]}" \
     "${PROJECT_DOCKER_RUN_ARGS[@]}" \

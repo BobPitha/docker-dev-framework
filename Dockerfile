@@ -80,11 +80,14 @@ RUN mkdir -p /projects \
 
 RUN cat >>/etc/bash.bashrc <<'EOF'
 
-# Execute DDF profile snippets
-if [ -d /etc/profile.d ]; then
-  for f in /etc/profile.d/ddf-*.sh; do
-    [ -f "$f" ] && . "$f"
-  done
+# Execute DDF profile snippets (only for interactive shells, prevent double-sourcing)
+if [ -n "$PS1" ] && [ -z "$DDF_PROFILE_SOURCED" ]; then
+  export DDF_PROFILE_SOURCED=1
+  if [ -d /etc/profile.d ]; then
+    for f in /etc/profile.d/ddf-*.sh; do
+      [ -f "$f" ] && . "$f"
+    done
+  fi
 fi
 EOF
 
@@ -189,6 +192,33 @@ RUN chmod 0440 /etc/sudoers.d/sudoers-custom \
 #         cat "${incfile}" >> /home/${SERVER_USER}/.bashrc; \
 #       fi; \
 #     done
+
+RUN cat >>/etc/bash.bashrc <<'EOF'
+
+# DDF customizations
+if [ -n "$PS1" ]; then
+  # Helpful message for interactive shells
+  echo "Run ddf-rosdep-install to install ROS package dependencies."
+  
+  # Add ~/bin to PATH if it exists and isn't already there
+  if [ -d "$HOME/bin" ]; then
+    case ":$PATH:" in
+      *:"$HOME/bin":*) ;;
+      *) export PATH="$HOME/bin:$PATH" ;;
+    esac
+  fi
+fi
+EOF
+
+RUN cat >>/etc/profile.d/ddf-customize-prompt.sh <<'EOF'
+
+# Custom prompt color via HOST_COLOR and PATH_COLOR env vars
+# See: https://robotmoon.com/256-colors/
+if [ -n "$HOST_COLOR" ] && [ -n "$PATH_COLOR" ]; then
+    PROMPT_COMMAND="PS1='\${debian_chroot:+(\$debian_chroot)}\[\033[38;5;${HOST_COLOR}m\]\u@\h\[\033[0m\]:\[\033[38;5;${PATH_COLOR}m\]\w\[\033[0m\]\$ '"
+else
+fi
+EOF
 
 COPY .generated/ddf-build-hooks/dev-tooling/ /opt/ddf/build-hooks/dev-tooling/
 RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
