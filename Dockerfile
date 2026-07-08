@@ -160,7 +160,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # user files
-COPY ./docker/assets/dev/user /home/${SERVER_USER}
 RUN mkdir -p /home/${SERVER_USER}/bin \
     && printf '%s\n' \
       'case ":$PATH:" in' \
@@ -216,7 +215,6 @@ RUN cat >>/etc/profile.d/ddf-customize-prompt.sh <<'EOF'
 # See: https://robotmoon.com/256-colors/
 if [ -n "$HOST_COLOR" ] && [ -n "$PATH_COLOR" ]; then
     PROMPT_COMMAND="PS1='\${debian_chroot:+(\$debian_chroot)}\[\033[38;5;${HOST_COLOR}m\]\u@\h\[\033[0m\]:\[\033[38;5;${PATH_COLOR}m\]\w\[\033[0m\]\$ '"
-else
 fi
 EOF
 

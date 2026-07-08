@@ -12,7 +12,7 @@ readonly CONTAINER_NAME="${WORKSPACE_NAME}-dev"
 
 if docker ps --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
     printf '%s\n' "Stopping running container ${CONTAINER_NAME}"
-    docker stop "${CONTAINER_NAME}"
+    docker stop -t 1 "${CONTAINER_NAME}"
 else
     printf '%s\n' "Container ${CONTAINER_NAME} is not running"
 fi

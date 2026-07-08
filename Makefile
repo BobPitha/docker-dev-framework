@@ -7,6 +7,7 @@ STAGE ?= dev-gui
 
 CACHE_OPTION ?=
 NO_CACHE ?= 0
+NO_CACHE_STAGE ?=
 PLAIN_PROGRESS ?= 0
 
 ifeq ($(NO_CACHE),1)
@@ -84,8 +85,9 @@ ifeq ($(DRY_RUN),1)
 	@find .generated/ddf-build-hooks -type f | sort
 else
 	bin/banner Docker *$(BANNER_MSG)* build ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION}
-	docker build \
+	docker buildx build \
 		${PROGRESS_OPTION} \
+		$(if $(NO_CACHE_STAGE),--no-cache-filter $(NO_CACHE_STAGE),) \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:v${VERSION} \
 		-t ${DOCKER_IMAGE_TAG_ROOT}-${TAG_SUFFIX}:latest \
 		--target $(STAGE) \
@@ -150,6 +152,7 @@ help:
 	@echo "Variables:"
 	@echo "  DRY_RUN=1          - Generate hooks but skip docker build"
 	@echo "  NO_CACHE=1         - Disable Docker build cache"
+	@echo "  NO_CACHE_STAGE=STAGE - Disable cache for a specific stage (e.g. dev-core)"
 	@echo "  PLAIN_PROGRESS=1   - Use plain progress output for Docker build"
 	@echo "  DOCKER_ROOT_IMAGE  - Base image (default: ubuntu:noble)"
 	@echo "  ORGANIZATION       - Docker org/user (default: current user)"
