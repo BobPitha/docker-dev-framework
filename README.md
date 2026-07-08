@@ -1,43 +1,58 @@
 # docker-dev-framework
 A flexible and configurable docker-based development framework for working on various projects
 
-1) Quick Start
-2) Conceptual Model
+1. Overview
+2. Glossary
+3. Installation and Configuration
+3. Concepts
 3) Customization
-4) Advanced mechanics / Reference
+5. Reference
+6. Troubleshooting
+7. Examples
+8. Philosophy
 
 ## 1. Overview
 ### What DDF is:
-- Multi-stage Docker-based development framework
-- Project-driven customization
-- Supports customization by project-driven build hooks
-- Intended for reproducible development environments
-- Supports (TBD) a production container as well
-- Supports (among other things):
-  - ROS2
-  - GUI applications
-  - Multiple languages, including Python, C++, C#, NodeJS, etc.
-  - Cached vendor SDKs
-  - Multi-project workspaces
-  - Any Linux flavor
+The Docker Development Framework (DDF) is a multi-stage Docker-based framework for creating reproducible, project-specific development environments. Rather than requiring each project to maintain its own Dockerfile, DDF allows projects to customize shared development images through build hooks and other metadata, while keeping the framework itself generic.
+
+Although DDF currently focuses on building an interactive development environment, its staged architecture was conceived in part to support the generation of lean production images suitable for deployment (to VMs, like AWS or GCP, or to frameworks like Kubernetes).
+
+DDF has successfully been used for projects involving:
+- ROS2
+- GUI applications
+- Multiple languages, including Python, C++, C#, and NodeJS
+- Cached vendor SDKs
+- Multi-repo workspaces
+- Different flavors of Linux
+
+Docker does not, by default, support running GUI applications from insde the container, but this has been supported by DDF. You can even run a GUI-based IDE inside the DDF container, although with VS Code, it's easier to run it outside.
+
+### Why DDF exists:
+DDF solves a few different problems involved in application development:
+
+**Isolation of host machine issues**<br>
+It allows a project's development environment to be managed without significantly affecting the host machine. It eliminates incompatibilities between the requirements of different projects that many need to be developed on the same host machine. Often the trial and error approach to installing packages leaves a host machine's OS full of weird and potentially damaging artifacts. Docker separates its internal configuration from the host operating system.
+
+**Projects own their customizations**<br>
+Projects have all sorts of requirements, whether its runtime shared objects, development frameworks, or resources. By tying these to the projects, it allows everything to move with the project, rather than requiring every new host machine to discover and install the requirements. It reduces the need for long elaborate "setting up the dev environment" documents that new employees all have to suffer through.
+
+**Allows for a quick start for new developers**<br>
+By encapsulating the configuration and support data in the project, a new developer doesn't have to grapple with it at first. It allows someone without deep knowledge of an application to start developing without having to delve into the issues of configuring an environment to build and run it.
 
 ### Design Goals:
-- Reproducible
-- Composable
-- Project-owned customization
-- Host-independent
-- Layered/staged builds
-- No framework modification per project (or minimal, at least)
+DDF was explicitly intended to be:
+- Reproducible: by capturing most configuration in the Dockerfile and shell scripts, the environment can be dependably rebuilt.
+- Composable: Leveraging the strength of Docker-based environments, it allows the environment to be considered and designed consciously, not evolved by trial-and-error.
+- Customizable: A lot of little tweaks are possible using the build hooks that DDF provides. And since the customization is in metadata attached to the projects, primarily in the form of build hook scripts and configuration files, it's clearer and more intuitive.
+- Host independent: While any Docker environment isn't completely separated from concerns about the host, and its kernel, a lot of DDF is not dependent on the host. Most projects should run basically the same on different hosts.
+- Layered: the staged builds allow clearer separation of considerations and issues when designing the build hooks and planning the environment.
+- Project-owned: DDF exists to build a customized development environment for any project, using the metadata in the project. The configuration is owned by the projects, and checked in with them, not with DDF.
 
-DDF is intended to be a flexible environment that can be used as a development environment on any system that can support Docker. It's been used, in various incarnations, on Ubuntu and Windows/WSL2, but should also work on macOS.
+DDF very consciously and deliberately separates the generic framework and the management of DDF containers from the project-specific customizations. The DDF framework can be tied to innumerable projects, and ideally a project can even be moved from one DDF framework to another, carrying its customizations with it.
 
-An important advantage to a container-based IDE is that all the customization to support the development environment goes inside the container. You're not plugging all sorts of random stuff into your host operating system, potentally installing incompatible versions and having to carefully manage the configuration. Instead, the installed packages and verions are easily managed via the DDF Dockerfile and the project customization hooks.
+While DDF is compatible with Windows/WSL2, and has been used there, it is not currently being actively developed or tested there.
 
-The basic idea is the container can be customized (via customization hooks in the project directories, thus not requireing DDF modification for each project) to build in whatever required resources the project needs. It can (will) support the building of two different containers: an interactive development container, and a turnkey production container suitable for depooyment to a VM or the cloud.
-
-The interactive development container supports GUI applications. I've used VS Code inside the ontainer in the past, but now it seems VS Code with the Microsoft Dev Containers extension.
-
-### Glossary
+## 2. Glossary
 Terms and concepts in this space:
 | Term | Definition |
 |------|------------|
@@ -45,9 +60,12 @@ Terms and concepts in this space:
 | Image | The output of the Docker build operation, it's a potential container. |
 | Project | A directory tree containing code that is under development in DDF. Each project can supply its own development hooks to customize the built Docker image. |
 | Workspace | The docker framework, potentially containing one or more projects. Except for the local workspace-config data, this should usually be an unaltered copy of the DDF repo. |
+| Stage | ... |
+| Hook | ... |
 
 
-## 2. Quick Start
+
+## 3. Installation and Configuration
 
 DDF can be used with minimal customization.
 
