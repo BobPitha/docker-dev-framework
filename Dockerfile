@@ -250,50 +250,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && fc-cache -fv \
     && rm -rf /var/lib/apt/lists/*
 
-
-# VS Code environment & installation
-# ENV LIBGL_ALWAYS_SOFTWARE=1
-
-# RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
-#       | gpg --dearmor > /usr/share/keyrings/microsoft-vscode.gpg \
-#     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-vscode.gpg] https://packages.microsoft.com/repos/code stable main" \
-#       > /etc/apt/sources.list.d/vscode.list
-
-# RUN apt-get update \
-#     && echo "code code/add-microsoft-repo boolean true" | debconf-set-selections \
-#     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends code \
-#     && rm -rf /var/lib/apt/lists/*
-
-# RUN echo "export DONT_PROMPT_WSL_INSTALL=1" >> /home/${SERVER_USER}/.bashrc
-
-# # Create default VS Code settings (valid JSON)
-# RUN <<EOF
-# if [ ! -f /home/${SERVER_USER}/.config/Code/User/settings.json ]; then
-#     mkdir -p /home/${SERVER_USER}/.config/Code/User
-#     cat > /home/${SERVER_USER}/.config/Code/User/settings.json <<'SETTINGS'
-# {
-#     "workbench.colorTheme": "Abyss"
-# }
-# SETTINGS
-#     chown -R ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}/.config
-# fi
-# EOF
-
-# # Wrap code to run reliably in containers
-# RUN <<WRAPPER
-# mv /usr/bin/code /usr/bin/code.real
-# cat > /usr/bin/code <<'CODE'
-# #!/usr/bin/env bash
-# exec /usr/bin/code.real \
-#     --no-sandbox \
-#     --disable-gpu \
-#     --disable-software-rasterizer \
-#     --disable-dev-shm-usage \
-#     --disable-features=UseOzonePlatform,Vulkan \
-#     "$@"
-# CODE
-# chmod +x /usr/bin/code
-# WRAPPER
+# VS Code should be installed outside of Docker now.
 
 COPY .generated/ddf-build-hooks/dev-gui/ /opt/ddf/build-hooks/dev-gui/
 RUN --mount=type=bind,source=.generated/ddf-libs,target=/libs,readonly \
