@@ -2,6 +2,9 @@
 A flexible and configurable docker-based development framework for working on various projects
 
 1. Overview
+2. Quick Start
+3. Conceptual Model
+
 2. Glossary
 3. Installation and Configuration
 3. Concepts
@@ -12,6 +15,10 @@ A flexible and configurable docker-based development framework for working on va
 8. Philosophy
 
 ## 1. Overview
+- What DDF Is
+- Why DDF Exists
+- Design Goals
+
 ### What DDF is:
 The Docker Development Framework (DDF) is a multi-stage Docker-based framework for creating reproducible, project-specific development environments. Rather than requiring each project to maintain its own Dockerfile, DDF allows projects to customize shared development images through build hooks and other metadata, while keeping the framework itself generic.
 
@@ -52,106 +59,186 @@ DDF very consciously and deliberately separates the generic framework and the ma
 
 While DDF is compatible with Windows/WSL2, and has been used there, it is not currently being actively developed or tested there.
 
-## 2. Glossary
-Terms and concepts in this space:
-| Term | Definition |
-|------|------------|
-| Container | The live instance of a Docker image |
-| Image | The output of the Docker build operation, it's a potential container. |
-| Project | A directory tree containing code that is under development in DDF. Each project can supply its own development hooks to customize the built Docker image. |
-| Workspace | The docker framework, potentially containing one or more projects. Except for the local workspace-config data, this should usually be an unaltered copy of the DDF repo. |
-| Stage | ... |
-| Hook | ... |
+## 2. Quick Start
+- Prerequisites
+- Downloading
+- Configuring
+- make
+- ddf commands
 
+This section walks you through configuring a DDF workspace, associating it with one or more existing projects, building a development container, and shelling into it.
 
-
-## 3. Installation and Configuration
-
-DDF can be used with minimal customization.
-
+This section uses examples of a robotic software workspace. Specifically, it assumes:
+```
+~/dev/robot/
+ |
+ | ├── motion-control/
+ | ├── robot-data/
+ | ├── task-planner/
+ | └── vision/
+ |
+ └── robot-ddf/
+```
 ### Prerequisites
+To use DDF you need some basic configuration of your system. Specifically, you need:
+- Docker - specifically with BuildKit
+- ??? I don't know what else off the top of my head.
 
-- Docker - BuildKit enabled version
-- Make
-- Git
+### Downloading
+Clone the DDF repository into the directory that will become the root of your development workspace:
+`git clone git@github.com:BobPitha/docker-dev-framework.git robot-ddf`<br>
+--or--<br>
+`git clone https://github.com/BobPitha/docker-dev-framework.git robot-ddf`
 
-### Clone the framework:
-```
-git clone git@github.com:BobPitha/docker-dev-framework.git [dirname]
-```
+Because you need a separate DDF repo for each DDF workspace you use, consider giving the local DDF clone a name unique to the project but still clearly DDF. Something like robot-ddf.
 
-### Configure workspace-config files
-There are two files to configure here: workspace.env and project_dirs.bash.
-#### workspace.env
-There are four variables to configure here: *asdf* 
+### Configuring
+Inside the cloned DDF directory, you'll find `workspace-config/`, containing two files:
+- `project_dirs.bash`
+- `workspace.env`
 
-- PROJECT= _the project name, will be used to build the container name_.
-- ORGANIZATION= _also used in the container name_.
-- SERVER_USER= _used as the username inside the dev container_.
-- DOCKER_ROOT_IMAGE= _The docker image to use as the starting point_.
+These two files are usually all that has to be modified to link this DDF workspace to its project directories.
 
 #### project_dirs.bash
-This file contains the list of project directories to be mounted into the container. An example project_dirs.bash might be:
+This file is what links this workspace (robot-ddf) to the project directories. Every directory named here will be scanned for a .ddf directory, which supplies metadata, build hooks, and configuration. Each project directory is also mounted into the workspace container.
+
+Out of the box, this file contains just an empty list. Insert the project directory, or list of directories (one per line, no separators) that the framework will build a container for. So, for example:
 ```
 PROJECT_DIRS=(
-    ${HOME}/dev/foo
+  ${HOME}/dev/robot/vision/
+  ${HOME}/dev/robot/motion-control/
+  ${HOME}/dev/robot/task-planner/
+  ${HOME}/dev/robot/robot-data/
 )
 ```
-This mounts a single directory, foo, to the docker. It will be mounted to /projects/ava_setup. You can list as many directories as you like, each on a separate line with no commas or other punctuation between them. Be careful not to try to mount two directories with identical names; DDF isn't smart enough to handle that.
+#### workspace.env
+This file defines the basic identity of this workspace and the Docker images it produces
+. By default, it contains:
+```
+WORKSPACE_NAME=ddf
+ORGANIZATION=bob
+SERVER_USER=bob
+DOCKER_ROOT_IMAGE=ubuntu:noble
 
-#### Make the ddf script executable (optional but recommended)
-There are some ddf commands (ddf shell, ddf stop, ddf clean, ddf clean-all) that use the ddf helper script. To avoid having to type a path to the ddf script in the ddf repo's bin directory, you can copy the script to a directory in your path.
+# https://robotmoon.com/256-colors/
+HOST_COLOR=207
+PATH_COLOR=154
+```
+**WORKSPACE_NAME**: this is used as the basis for generating container image names, as well as the hostname of the docker. We might choose 'robot' for this example.
 
-### Build the container
+**ORGANIZATION**: Is used to label the container, and is accessible inside the build hooks and in the running container as needed.
 
-```
-$ make
-```
+**SERVER_USER**: is the name of the user (and group) set up inside the docker container. You will be automatically running as this user, and your home is /home/${SERVER_USER}. 
 
-### Enter the container
-```
-$ ddf shell
-bob@ddf-dev:~$
-```
+**DOCKER_ROOT_IMAGE**: the Docker image to use as the root of all customizations. By default it's ubuntu:noble (that's 24.04), but can easily be set to something older, newer, or even non-Ubuntu. However, I haven't tested much outside of a few versions older or the newer Ubuntu. You might run into issues, please contact me (rpitha@gmail.com) for help if necessary.
 
-## 3. Core Concepts
-### Multi-Stage Build
-The container is built in multiple stages:
-- base: Basic OS, runtime. Configuration shared by dev and prod containers
-- dev-core: Core develop components, basics of the interactive shell
-- dev-tooling: SDKs, toolchains.
-- dev-gui: GUI components and resources, graphical apps, support for front ends
-- prod: runtime-only non-interactive deployable container
+**HOST_COLOR** and **PATH_COLOR**: these are to make the container shell visually distinctive, so you know which shell is in the container and which isn't. Feel free to pick colors you liek from the 256 colors in the linked document/
 
-## 4. Project Customization
-In each project directory, there can be the following folder structure:
-```
-.ddf/
-  build/
-    base/
-    dev-core/
-    dev-tooling/
-    dev-gui/
-    prod/
-```
-During the container build, customization hook scripts will be gathered into a folder structure in the DDF directory:
-```
-.generated/
-  ddf-build-hooks/
-  ddf-libs/
-```
+### make
+Once DDF is configured per above, you can generate the Docker image by typing:<br>
+`$ make dev`<br>
+or even just,<br>
+`$ make`
+For workspaces with extensive customization (lookin' at you, ROS2!) it can take a while. When it completes successfully, you have a Docker image.
 
-## 5. Build Hooks
-Build hooks are small (usually) shell scripts that are invoked from the Dockerfile build at the end of each build stage, to customize that stage for each attached repo. If one project needs python resources to support a python application, they might be installed in dev-tooling. ROS might be mostly installed in base, although runtime GUI apps like foxglove or rviz would be installed in dev-gui.
+The build process does a number of things:
+- collects build hook scripts from the linked projects,
+- builds a docker image
+- tags it using the workspace name, organization, and current git commit.
 
-build hooks for a particular stage can be (using base as an exmple):
-```
-.ddf/build/base.sh
-.ddf/build/base/*.sh
-```
-.ddf/build/base.sh will be invoked first, then the rest in lexical order. I recommend prefixing the hook scripts with an integer to force the order: 10-foo.sh, for instance. 
+### ddf commands
+There are a couple commands to control the DDF container:
+- `ddf shell`: opens a shell in the container, starting it running if needed.
+- `ddf stop`: stops the current running container. There should only be one at any time.
 
-During the build, the hooks will be gathered into the .generated/ddf-build-hooks/<stage> directories and executed from there.
+Since `ddf shell` will use the current running container even if a newer one has been built, you should use `ddf stop` if you've just built a new version. If the ddf repo has been updated and is on a new commit SHA, DDF will insist you build a new version of the shell and switch to it.
+
+### Typical workflow
+A typical workflow with DDF involves:
+1. Configure the workspace (see above)
+2. `make` (takes a while, go play in the hallway (https://imgs.xkcd.com/comics/compiling.png))
+3. `ddf shell` - do your work
+
+I don't typically use `ddf stop` until I need to do another make.
+
+## 3. Conceptual Model
+- Core Concepts
+- Build Stages
+- Build Hooks
+- Cached resources
+- Generated artifacts
+
+### Core Concepts
+
+| Concept | Description |
+| :--- | :--- |
+| Workspace | Refers to an instance of DDF, defined by a cloned repo and the associated projects 
+| Project | Each code repo or code tree associated with a DDF workspace is a project. Projects can contain build hooks and other configuration metadata, and are mounted into the running workspace. |
+| Build Hook | A shell script contributed by a project that customizes the docker build.  |
+| Build Stage | One phase of the multi-part Docker build. In DDF the stages are: base, dev-core, dev-tooling, dev-gui, and prod |
+| Image | A built Docker image produced by one build stage of the framework.  |
+| Container | a running instance of one of the DDF images |
+
+### Build Stages
+The DDF Docker build has been separated into stages. While many operations can be done at virtually any point in the Docker build, DDF uses stages to separate responsibilities and encourage a conscious organization of installation tasks and build hooks. That, in turn, makes it easier to organize and visualize the build steps - which, for a workspace that included several complex projects, might be a complex task.
+
+As with many hierarchical, staged environments, the earlier stages should become solid early on, and later changes will largely go in the later stages. This definitely works well with Docker build caching.
+
+**base** is the stage common to both dev and prod image builds; it is effectively the common denomiator of all builds - the bare minimum that's needed to support both the development shell and the the minimalist production run. If a resource is needed to both develop and run the built project, it should be in base.
+
+Typical contents:
+- Base operating system resources
+- User and group configuration
+- Locale, timezone
+- Networking
+- Common runtime resources needed by the projects
+
+*Rule of thumb*: Needed by both development and production
+
+**dev-core** provides the general software development environment. This is what's needed to make the container a general software development environment. If every developer working on the project needs it, it should be in dev-core.
+
+Typical contents:
+- Compilers and languages
+- Build tools (cmake,  ninja, bazel, etc)
+- Package managers (npm, pip, etc.)
+- Source control (git)
+- editors
+
+*Rule of thumb*: Needed for general software development.
+
+**dev-tooling** is where project-specific technologies that suport development are installed and set up. This is technologies and resources specific to the projects being developed.
+
+Typical contents:
+- SDKs and vendor libraries
+- Dev tooling for packages like ROS
+- Language-specific package managers
+- Custom tools
+- Third-party frameworks
+
+*Rule of thumb*: The project's tech stack needs it
+
+**dev-gui** supports the graphical desktop environment. While `dev-tooling` is about building the software, `dev-gui` is about interacting with and running the software. This is where GUI build tools, support for the GUI environment or GUI projects are installed. 
+
+Typical contents:
+- X11/Wayland support
+- Desktop utilities
+- IDEs
+- Visualization tools and image viewers
+- GUI SDKs
+
+*Rule of thumb*: Needed by only graphical tools or to support graphical development.
+
+**prod** supports the deployed running of the project. It's intended to be a stripped-down, minimal, non-interactive environment that is deployed to a compute resource, and generally should start the project artifact running upon startup. Unlike the development stage, prod should contain only what's absolutely necessary to execute the built and installed application.
+
+*Rule of thumb*: Only the finished application needs it to run.
+
+### Build Hooks
+DDF supports customization of the Docker build via the invocation of shell scripts in each build stage. The stages that can have hooks are: base, dev-core, dev-tooling, dev-gui, and prod. While many customizations could really be made at almost any point in the build, the stages 
+
+### Cached Data
+
+### Generated Artifacts
+
 
 ### Hook Script Environment
 
