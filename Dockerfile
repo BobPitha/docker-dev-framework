@@ -196,9 +196,6 @@ RUN cat >>/etc/bash.bashrc <<'EOF'
 
 # DDF customizations
 if [ -n "$PS1" ]; then
-  # Helpful message for interactive shells
-  echo "Run ddf-rosdep-install to install ROS package dependencies."
-  
   # Add ~/bin to PATH if it exists and isn't already there
   if [ -d "$HOME/bin" ]; then
     case ":$PATH:" in
